@@ -55,6 +55,7 @@ script.cpp
 script.h
 search.cpp
 search.h
+setup.cfg
 setup.py
 shape.cpp
 shape.h

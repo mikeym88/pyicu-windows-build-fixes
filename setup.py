@@ -1,10 +1,12 @@
 
-import os, sys
+import os
+import platform
+import sys
 
 try:
-    from setuptools import setup, Extension
+    from setuptools import Extension, setup
 except ImportError:
-    from distutils.core import setup, Extension
+    from distutils.core import Extension, setup
 
 from distutils.spawn import find_executable
 
@@ -19,7 +21,7 @@ try:
         return subprocess_check_output(popenargs)
 
 except ImportError:
-    from subprocess import Popen, PIPE
+    from subprocess import PIPE, Popen
 
     def check_output(*popenargs):
         print("(running '%s')" %(' '.join(*popenargs)))
@@ -58,7 +60,8 @@ def configure_with_pkg_config(flags, config_args, label):
         print('Could not configure %s with pkg-config' %(label))
         raise
 
-
+# System information (e.g. architecture, platform)
+cpu_bits = platform.architecture()[0]
 platform = sys.platform
 if platform.startswith(('linux', 'gnu')):
     platform = 'linux'
@@ -107,11 +110,20 @@ print('''
 Building pyicu %s for ICU %s (max ICU major version supported: %s)
 ''' %(VERSION, ICU_VERSION, ICU_MAX_MAJOR_VERSION))
 
+
+WINDOWS_DEFAULT_ICU_PATH = os.path.join("C:", "icu", "include")
+WINDOWS_ICU_PATH = os.environ.get("LIBICUPATH", WINDOWS_DEFAULT_ICU_PATH)
+
+if cpu_bits == '64bit':
+    WINDOWS_ICU_LIB_PATH = os.path.join(WINDOWS_ICU_PATH, 'lib64')
+else:
+    WINDOWS_ICU_LIB_PATH = os.path.join(WINDOWS_ICU_PATH, 'lib')
+
 INCLUDES = {
     'darwin': [],
     'linux': [],
     'freebsd': ['/usr/local/include'],
-    'win32': ['c:/icu/include'],
+    'win32': [os.path.join(WINDOWS_ICU_PATH, 'include')],
     'sunos5': [],
     'cygwin': [],
 }
@@ -138,7 +150,7 @@ CFLAGS = {
     'darwin': ['-std=c++17'],
     'linux': ['-std=c++17'],
     'freebsd': ['-std=c++17'],
-    'win32': ['/Zc:wchar_t', '/EHsc'],
+    'win32': ['/Zc:wchar_t', '/EHsc', '/std:c++17'],
     'sunos5': ['-std=c++17'],
     'cygwin': ['-D_GNU_SOURCE=1', '-std=c++17'],
 }
@@ -157,7 +169,7 @@ LFLAGS = {
     'darwin': [],
     'linux': [],
     'freebsd': ['-L/usr/local/lib'],
-    'win32': ['/LIBPATH:c:/icu/lib'],
+    'win32': [f'/LIBPATH:{WINDOWS_ICU_LIB_PATH}'],
     'sunos5': [],
     'cygwin': [],
 }
@@ -170,6 +182,17 @@ LIBRARIES = {
     'sunos5': ['icui18n', 'icuuc', 'icudata'],
     'cygwin': ['icui18n', 'icuuc', 'icudata'],
 }
+
+LIBRARY_DIRS = {
+    'darwin': [],
+    'linux': [],
+    'freebsd': [], # not tested; maybe add /usr/local/lib?
+    'win32': [WINDOWS_ICU_LIB_PATH],
+    'sunos5': [],
+    'cygwin': [],
+}
+
+_library_dirs = LIBRARY_DIRS[platform]
 
 if 'PYICU_INCLUDES' in os.environ:
     _includes = os.environ['PYICU_INCLUDES'].split(os.pathsep)
@@ -195,7 +218,7 @@ else:
     except:
         if not _cflags:
             raise RuntimeError('''
-Please install pkg-config on your system or set the PYICU_CFLAGS environment 
+Please install pkg-config on your system or set the PYICU_CFLAGS environment
 variable to the flags required by the C++ compiler to find the header files
 for ICU, and possibly -std=c++11 if using ICU version >= 60 or -std=c++17 if using ICU version >= 75
             ''')
@@ -234,7 +257,7 @@ else:
 Please install pkg-config on your system or set the PYICU_LFLAGS environment
 variable to the flags required by the linker to find the libraries for ICU
             ''')
-      
+
 
 if 'PYICU_LIBRARIES' in os.environ:
     _libraries = os.environ['PYICU_LIBRARIES'].split(os.pathsep)
@@ -280,7 +303,8 @@ setup(name="pyicu",
                              include_dirs=_includes,
                              extra_compile_args=_cflags,
                              extra_link_args=_lflags,
-                             libraries=_libraries)],
+                             libraries=_libraries,
+                             library_dirs=_library_dirs)],
       package_dir={"": "py"},
       packages=['icu'],
       tests_require=['pytest', 'six'])
