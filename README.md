@@ -30,6 +30,7 @@ pre-built binary packages of ICU and PyICU, see below.
     - Install the "Desktop development tools with C++" workload using [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
     - Download the appropriate [ICU version](https://github.com/unicode-org/icu/releases) (e.g. `icu4c-78.3-Win64-MSVC2022.zip` for ICU version 78 for 64-bit windows)
       - Extract it `C:\icu`; if you choose another location (e.g. `C:\Program Files\icu`), create an environment variable named `LIBICUPATH` that points to that path
+    - Add the `bin` folder (e.g. `C:\icu\bin`) to the `PATH`
   - Mac OS X
     - Ensure ICU is installed and can be found by `pkg-config` (as `icu-config` was [deprecated](https://unicode-org.github.io/icu/userguide/icu/howtouseicu.html#c-makefiles) as of ICU 63.1), either by following [ICU build instructions](https://unicode-org.github.io/icu/userguide/icu4c/build.html), or by using Homebrew:
       ```sh
