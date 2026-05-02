@@ -1,6 +1,7 @@
 
 import os
 import platform
+import re
 import sys
 
 try:
@@ -73,7 +74,7 @@ CONFIGURE_WITH_ICU_CONFIG = {
     'darwin': False,
     'linux': True,
     'freebsd': False, # not tested
-    'win32': False,   # no icu-config
+    'win32': False,   # no icu-config, but other available binaries: icuinfo.exe, icupkg.xe and others
     'sunos5': False,  # not tested
     'cygwin': False,  # not tested
 }
@@ -82,7 +83,7 @@ CONFIGURE_WITH_PKG_CONFIG = {
     'darwin': False,  # no pkg-config ?
     'linux': True,
     'freebsd': False, # not tested
-    'win32': False,   # no pkg-config ?
+    'win32': False,   # no pkg-config; but there is a pkg-data executable
     'sunos5': False,  # not tested
     'cygwin': False,  # not tested
 }
@@ -92,8 +93,20 @@ try:
     ICU_VERSION = os.environ['ICU_VERSION']
 except:
     try:
-        ICU_VERSION = check_output(('icu-config', '--version')).strip()
-        CONFIGURE_WITH_ICU_CONFIG[platform] = True
+        # On Windows, there is no icu-config, but there is a uconv executable that prints the ICU version in its --version output
+        if platform == 'win32':
+            version_info = check_output(('uconv', '--version')).strip()
+            version_info_regex = r'^.*ICU\W+(?P<MAJOR_VERSION>\d+)\.(?P<MINOR_VERSION>\d+).*$'
+            major_version = re.search(version_info_regex, version_info.decode()).group('MAJOR_VERSION')
+            if not major_version:
+                raise RuntimeError("Could not determine ICU version from uconv output: %s" % version_info)
+            if not major_version.isnumeric() or (major_version > ICU_MAX_MAJOR_VERSION):
+                raise RuntimeError("ICU version %s is not supported by pyicu %s; maximum supported major version is %s" % (major_version, VERSION, ICU_MAX_MAJOR_VERSION))
+            else:
+                ICU_VERSION = major_version.encode('ascii')
+        else:
+            ICU_VERSION = check_output(('icu-config', '--version')).strip()
+            CONFIGURE_WITH_ICU_CONFIG[platform] = True
     except:
         try:
             ICU_VERSION = check_output(('pkg-config', '--modversion', 'icu-i18n')).strip()
